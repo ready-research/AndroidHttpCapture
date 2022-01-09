@@ -43,6 +43,20 @@ public class ZipUtils {
             }
         }
     }
+    
+    public static File protectZipSlip(String fileName, String destDir) throws IOException{
+        Path destPath = Paths.get(destDir);
+        Path resolvedDest = destPath.resolve(fileName);
+        Path normalizedPath = resolvedDest.normalize();
+
+        // checking whether zipEntry filename has changed the destination
+        if (!normalizedPath.startsWith(destDir)) {
+            throw new IOException("Malicious zip entry found: " + fileName);
+        }
+
+        File newFile = normalizedPath.toFile();
+        return newFile;
+    }
 
     private static void zipFileOrDirectory(ZipOutputStream out,
                                            File fileOrDirectory, String curPath) throws IOException {
@@ -104,26 +118,22 @@ public class ZipUtils {
                 FileOutputStream out = null;
                 try {
                     if (zipEntry.isDirectory()) {
-                        String name = zipEntry.getName();
+                        String name = zipEntry.getName();            
                         name = name.substring(0, name.length() - 1);
-                        File f = new File(outputDirectory + File.separator
-                                + name);
+                        File f = protectZipSlip(name, outputDirectory);
                         f.mkdirs();
                     } else {
                         int index = entryName.lastIndexOf("\\");
                         if (index != -1) {
-                            File df = new File(outputDirectory + File.separator
-                                    + entryName.substring(0, index));
+                            File df = protectZipSlip(entryName, outputDirectory);
                             df.mkdirs();
                         }
                         index = entryName.lastIndexOf("/");
                         if (index != -1) {
-                            File df = new File(outputDirectory + File.separator
-                                    + entryName.substring(0, index));
+                            File df = protectZipSlip(entryName, outputDirectory);
                             df.mkdirs();
                         }
-                        File f = new File(outputDirectory + File.separator
-                                + zipEntry.getName());
+                        File f = protectZipSlip(entryName, outputDirectory);
                         // f.createNewFile();
                         in = zipFile.getInputStream(zipEntry);
                         out = new FileOutputStream(f);
